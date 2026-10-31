@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+    <title>Mediador: Resolución de Conflictos</title>
+    <style>
+        :root {
+            --bg: #F3EFE6;
+            --card: #FFFDF8;
+            --ink: #2B3A3F;
+            --mute: #6B7A80;
+            --teal: #2F7F73;
+            --teal-d: #256A60;
+            --sand: #E7DFCF;
+            --acc: #D9893B;
+            --good: #8FC9A8;
+            --red: #C8553D;
+            box-sizing: border-box;
+            padding-top: env(safe-area-inset-top, 0px);
+            padding-bottom: env(safe-area-inset-bottom, 0px)
+        }
+
+        @media (prefers-color-scheme:dark) {
+            :root:not([data-theme="light"]) {
+                --bg: #1F2A2D;
+                --card: #2A383C;
+                --ink: #F1EEE6;
+                --mute: #A9B6BA;
+                --sand: #3A4B50;
+                color-scheme: dark
+            }
+        }
+
+        :root[data-theme="dark"] {
+            --bg: #1F2A2D;
+            --card: #2A383C;
+            --ink: #F1EEE6;
+            --mute: #A9B6BA;
+            --sand: #3A4B50;
+            color-scheme: dark
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent
+        }
+
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            background: var(--bg);
+            color: var(--ink);
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+            overflow: hidden;
+            overscroll-behavior: none
+        }
+
+        body {
+            background: var(--bg)
+        }
+
+        #app {
+            height: 100%;
+            max-width: 520px;
+            margin: 0 auto;
+            position: relative
+        }
+
+        .screen {
+            display: none;
+            height: 100%;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            gap: 18px;
+            text-align: center
+        }
+
+        .screen.on {
+            display: flex
+        }
+
+        .card {
+            background: var(--card);
+            border-radius: 22px;
+            padding: 24px;
+            width: 100%;
+            box-shadow: 0 8px 28px rgba(43, 58, 63, .10);
+            border: 1px solid var(--sand)
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.7rem;
+            letter-spacing: -.02em
+        }
+
+        p {
+            margin: 0;
+            line-height: 1.5
+        }
+
+        .sub {
+            color: var(--mute);
+            font-size: .95rem
+        }
+
+        input {
+            width: 100%;
+            padding: 15px 16px;
+            font-size: 1.05rem;
+            border-radius: 14px;
+            border: 2px solid var(--sand);
+            background: var(--bg);
+            color: var(--ink);
+            outline: none;
+            margin-top: 16px;
+            text-align: center
+        }
+
+        input:focus {
+            border-color: var(--teal)
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            padding: 17px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #fff;
+            background: var(--teal);
+            border: 0;
+            border-radius: 16px;
+            box-shadow: 0 5px 0 var(--teal-d);
+            cursor: pointer;
+            transition: transform .1s, box-shadow .1s
+        }
+
+        .btn:active {
+            transform: translateY(3px);
+            box-shadow: 0 2px 0 var(--teal-d)
+        }
+
+        .btn:disabled {
+            background: var(--sand);
+            color: var(--mute);
+            box-shadow: 0 5px 0 #cfc5b0;
+            cursor: not-allowed
+        }
+
+        .btn svg {
+            width: 22px;
+            height: 22px
+        }
+
+        #image-container {
+            width: 100%;
+            aspect-ratio: 16/10;
+            border-radius: 20px;
+            border: 2px dashed var(--mute);
+            background: var(--sand);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--mute);
+            font-size: .9rem;
+            gap: 8px;
+            flex-direction: column
+        }
+
+        .guide {
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+            text-align: left;
+            width: 100%
+        }
+
+        .guide svg {
+            flex: 0 0 52px;
+            width: 52px;
+            height: 52px
+        }
+
+        .bubble {
+            background: var(--card);
+            border: 1px solid var(--sand);
+            border-radius: 6px 18px 18px 18px;
+            padding: 14px 16px;
+            box-shadow: 0 6px 18px rgba(43, 58, 63, .08);
+            font-size: 1rem
+        }
+
+        .steps {
+            display: grid;
+            gap: 12px;
+            text-align: left;
+            width: 100%
+        }
+
+        .step {
+            display: flex;
+            gap: 12px;
+            align-items: flex-start
+        }
+
+        .step i {
+            flex: 0 0 40px;
+            height: 40px;
+            border-radius: 12px;
+            background: var(--sand);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--teal)
+        }
+
+        .step i svg {
+            width: 22px;
+            height: 22px
+        }
+
+        /* game */
+        #play {
+            padding: 0;
+            gap: 0;
+            justify-content: flex-start;
+            align-items: stretch;
+            position: relative
+        }
+
+        #hud {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            padding: 10px 14px 6px;
+            background: var(--card);
+            border-bottom: 1px solid var(--sand);
+            z-index: 5
+        }
+
+        #score {
+            font-weight: 800;
+            font-size: 1.35rem;
+            text-align: left
+        }
+
+        #score small {
+            display: block;
+            font-size: .65rem;
+            font-weight: 600;
+            color: var(--mute);
+            letter-spacing: .08em
+        }
+
+        #clock {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 800;
+            font-size: 1.35rem;
+            font-variant-numeric: tabular-nums
+        }
+
+        #clock svg {
+            width: 26px;
+            height: 26px;
+            color: var(--acc)
+        }
+
+        #clock.hurry {
+            color: var(--red);
+            animation: blink .5s infinite
+        }
+
+        #clock.hurry svg {
+            color: var(--red)
+        }
+
+        @keyframes blink {
+            50% {
+                opacity: .35
+            }
+        }
+
+        #lives {
+            display: flex;
+            gap: 6px;
+            justify-content: flex-end
+        }
+
+        #lives svg {
+            width: 28px;
+            height: 28px;
+            color: var(--red);
+            transition: opacity .3s, transform .3s
+        }
+
+        #lives svg.lost {
+            opacity: .18;
+            transform: scale(.8)
+        }
+
+        #bar {
+            height: 6px;
+            background: var(--sand);
+            z-index: 5
+        }
+
+        #bar div {
+            height: 100%;
+            width: 100%;
+            background: var(--teal);
+            transition: width .25s linear
+        }
+
+        #field {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+            background: linear-gradient(var(--bg), var(--sand))
+        }
+
+        #flash {
+            position: absolute;
+            inset: 0;
+            background: var(--red);
+            opacity: 0;
+            pointer-events: none;
+            z-index: 6;
+            transition: opacity .35s
+        }
+
+        #flash.on {
+            opacity: .28;
+            transition: none
+        }
+
+        .ent {
+            position: absolute;
+            left: 0;
+            top: 0;
+            will-change: transform
+        }
+
+        .cf svg.sp {
+            width: 100%;
+            display: block;
+            overflow: visible
+        }
+
+        .cf .lb {
+            position: absolute;
+            left: 50%;
+            top: 100%;
+            transform: translateX(-50%);
+            white-space: nowrap;
+            font-size: .62rem;
+            font-weight: 800;
+            letter-spacing: .06em;
+            color: var(--ink);
+            background: var(--card);
+            padding: 2px 7px;
+            border-radius: 99px;
+            border: 1px solid var(--sand);
+            margin-top: -4px
+        }
+
+        .cf .body {
+            fill: var(--c);
+            transition: fill .2s
+        }
+
+        .cf .happy,
+        .cf .shield {
+            display: none
+        }
+
+        .cf .shield {
+            fill: none;
+            stroke: var(--ink);
+            stroke-width: 4;
+            opacity: .55
+        }
+
+        .cf.sh .shield {
+            display: block
+        }
+
+        .cf.healed {
+            --c: #8FC9A8
+        }
+
+        .cf.healed .sad {
+            display: none
+        }
+
+        .cf.healed .happy {
+            display: block
+        }
+
+        .cf.healed .lb {
+            opacity: 0
+        }
+
+        .shot {
+            position: absolute;
+            left: 0;
+            top: 0;
+            padding: 5px 11px;
+            border-radius: 99px;
+            background: var(--teal);
+            color: #fff;
+            font-size: .72rem;
+            font-weight: 700;
+            white-space: nowrap;
+            box-shadow: 0 3px 10px rgba(47, 127, 115, .4);
+            will-change: transform
+        }
+
+        .link {
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 7px;
+            width: 30px;
+            border-radius: 9px;
+            background: var(--ink);
+            opacity: .5
+        }
+
+        .pl {
+            width: 62px;
+            height: 62px
+        }
+
+        .pl.inm {
+            animation: blink .18s infinite
+        }
+
+        .pl .fl {
+            transform-box: fill-box;
+            transform-origin: 50% 0;
+            animation: fl .12s infinite alternate
+        }
+
+        @keyframes fl {
+            to {
+                transform: scaleY(1.6)
+            }
+        }
+
+        .shot::after {
+            content: "";
+            position: absolute;
+            left: 50%;
+            top: 100%;
+            width: 5px;
+            height: 30px;
+            margin-left: -2.5px;
+            border-radius: 5px;
+            background: linear-gradient(var(--teal), transparent)
+        }
+
+        .mz {
+            position: absolute;
+            width: 26px;
+            height: 26px;
+            margin: -13px 0 0 -13px;
+            border-radius: 50%;
+            background: radial-gradient(#fff, var(--acc) 55%, transparent 70%);
+            animation: mz .16s ease-out forwards;
+            pointer-events: none
+        }
+
+        @keyframes mz {
+            from {
+                transform: scale(.4);
+                opacity: 1
+            }
+
+            to {
+                transform: scale(1.5);
+                opacity: 0
+            }
+        }
+
+        .fx {
+            position: absolute;
+            font-weight: 800;
+            font-size: 1.1rem;
+            color: var(--red);
+            pointer-events: none;
+            z-index: 4;
+            animation: fx .8s ease-out forwards
+        }
+
+        @keyframes fx {
+            to {
+                transform: translateY(-40px);
+                opacity: 0
+            }
+        }
+
+        .btn.alt {
+            background: var(--acc);
+            box-shadow: 0 5px 0 #b8722a
+        }
+
+        .btn.alt:active {
+            box-shadow: 0 2px 0 #b8722a
+        }
+
+        .ph {
+            aspect-ratio: 4/3;
+            border: 2px dashed var(--mute);
+            border-radius: 16px;
+            background: var(--sand);
+            color: var(--mute);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: .9rem;
+            padding: 12px
+        }
+
+        .screen:not(#play) {
+            overflow-y: auto;
+            justify-content: flex-start
+        }
+
+        .screen:not(#play)::before,
+        .screen:not(#play)::after {
+            content: "";
+            margin: auto
+        }
+
+        .screen:not(#play)>* {
+            flex-shrink: 0
+        }
+
+        .pt {
+            position: absolute;
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: var(--good);
+            animation: pt .6s ease-out forwards;
+            pointer-events: none
+        }
+
+        .pt.bad {
+            background: var(--red)
+        }
+
+        @keyframes pt {
+            to {
+                transform: translate(var(--dx), var(--dy)) scale(.2);
+                opacity: 0
+            }
+        }
+
+        #score-big {
+            font-size: 3.6rem;
+            font-weight: 900;
+            color: var(--teal);
+            line-height: 1
+        }
+
+        .quote {
+            background: var(--card);
+            border-left: 6px solid var(--acc);
+            border-radius: 16px;
+            padding: 18px 18px;
+            font-size: 1.08rem;
+            font-weight: 600;
+            line-height: 1.45;
+            text-align: left;
+            box-shadow: 0 6px 18px rgba(43, 58, 63, .08)
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+
+        <section class="screen on" id="s-reg">
+            <div class="card">
+                <div id="robot-image"><img id="robot-img" alt="Robot"
+                        style="display:none;width:130px;max-width:60%;margin:0 auto 8px">
+                    <div class="ph" id="robot-ph" style="display:flex;aspect-ratio:auto;height:110px;margin-bottom:8px">
+                        .</div>
+                </div>
+                <h1 style="margin-top:10px">Hola es hora</h1>
+                <p class="sub" style="margin-top:6px"> de transformas el conflicto en armonía</p>
+                <input id="name" maxlength="20" placeholder="Escribe tu nombre" autocomplete="off">
+            </div>
+            <button class="btn" id="go" disabled>Iniciar</button>
+        </section>
+
+        <section class="screen" id="s-intro">
+            <div id="image-container" style="border:0;background:none;padding:0">
+                <img src="conflicto.jpg" alt="Mateo y Valeria"
+                    style="width:100%;height:100%;object-fit:cover;border-radius:20px;display:block">
+            </div>
+            <div class="guide">
+                <svg viewBox="0 0 52 52">
+                    <circle cx="26" cy="26" r="25" fill="#E7DFCF" />
+                    <circle cx="26" cy="22" r="10" fill="#F2C9A0" />
+                    <path d="M14 46c1-9 6-13 12-13s11 4 12 13z" fill="#2F7F73" />
+                    <path d="M16 21c0-8 5-11 10-11s10 3 10 11c-3-4-7-5-10-5s-7 1-10 5z" fill="#2B3A3F" />
+                    <circle cx="22" cy="23" r="1.4" fill="#2B3A3F" />
+                    <circle cx="30" cy="23" r="1.4" fill="#2B3A3F" />
+                    <path d="M22.5 27q3.5 3 7 0" stroke="#2B3A3F" fill="none" stroke-width="1.5"
+                        stroke-linecap="round" />
+                </svg>
+                <div class="bubble" id="intro-t"></div>
+            </div>
+            <button class="btn" id="next1">Siguiente</button>
+        </section>
+
+        <section class="screen" id="s-tut">
+            <div class="card">
+                <h1 style="font-size:1.4rem;margin-bottom:14px">Cómo se juega</h1>
+                <div class="steps">
+                    <div class="step"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M4 12h16M8 8l-4 4 4 4M16 8l4 4-4 4" />
+                            </svg></i>
+                        <p>En lugar de esquivar los problemas, ¡vamos a solucionarlos! Desliza tu dedo en la parte
+                            inferior para moverte de izquierda a derecha.</p>
+                    </div>
+                    <div class="step"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 3v10M7 8l5-5 5 5" />
+                                <circle cx="12" cy="18" r="3" />
+                            </svg></i>
+                        <p>Tu nave dispara herramientas de resolución positiva solo mientras la mueves. ¡Si te quedas
+                            quieta, no dispara!</p>
+                    </div>
+                    <div class="step"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <path
+                                    d="M12 21s-7-4.6-9.3-9A5.3 5.3 0 0 1 12 6.5 5.3 5.3 0 0 1 21.3 12C19 16.4 12 21 12 21z" />
+                            </svg></i>
+                        <p>¡Ten cuidado! Si un conflicto te toca directamente, perderás una vida. ¡Solo tienes 2 vidas y
+                            el tiempo corre! Y si dejas pasar un conflicto, perderás puntos.</p>
+                    </div>
+                    <div class="step"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="9" />
+                                <circle cx="12" cy="12" r="4" />
+                            </svg></i>
+                        <p><b>La meta:</b> cada conflicto transformado suma 10 puntos y cada uno que dejas pasar resta
+                            5. Reúne los puntos que puedas para ayudar a Mateo y Valeria a entenderse. Al final verás si
+                            lo lograron.</p>
+                    </div>
+                </div>
+            </div>
+            <button class="btn" id="play-btn">¡A Jugar! <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M7 4.5v15a1 1 0 0 0 1.5.86l12-7.5a1 1 0 0 0 0-1.72l-12-7.5A1 1 0 0 0 7 4.5z" />
+                </svg></button>
+        </section>
+
+        <section class="screen" id="play">
+            <div id="hud">
+                <div id="score"><small>PUNTOS</small><span id="sc">0</span></div>
+                <div id="clock"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round">
+                        <circle cx="11" cy="14" r="7" />
+                        <path d="M16 8l3-3M18 3.5l2.5 2.5M11 10v4l2.5 1.5" />
+                    </svg><span id="tm">1:00</span></div>
+                <div id="lives"></div>
+            </div>
+            <div id="bar">
+                <div id="barf"></div>
+            </div>
+            <div id="field">
+                <div id="flash"></div>
+            </div>
+        </section>
+
+        <section class="screen" id="s-end">
+            <div class="card">
+                <p id="end-t" style="font-size:1.1rem;font-weight:700;margin-bottom:14px"></p>
+                <p class="sub">Puntaje final</p>
+                <div id="score-big">0</div>
+            </div>
+            <div class="quote" id="quote"></div>
+            <button class="btn alt" id="see">Ver si ellos resolvieron su conflicto</button>
+            <button class="btn" id="again">Volver a jugar</button>
+        </section>
+
+        <section class="screen" id="s-res">
+            <div class="card">
+                <img id="res-img" alt="Resultado" style="width:100%;border-radius:16px;display:none">
+                <div class="ph" id="res-ph"></div>
+                <p id="res-t" style="font-size:1.15rem;font-weight:800;margin-top:14px"></p>
+                <p class="sub" id="res-d" style="margin-top:8px"></p>
+            </div>
+            <button class="btn" id="back">Regresar</button>
+        </section>
+
+    </div>
+    <script>
+        const $ = id => document.getElementById(id);
+        const PHRASES = ["Hoy demostraste que puedes ponerte en los zapatos de los demás para traer paz.", "Tu capacidad de entender el dolor del otro es lo que te hace un verdadero mediador.", "Recuerda que cuando decides comprender en lugar de juzgar, cambias vidas.", "Con tu pequeño gesto de comprensión de hoy, le cambiaste el día a alguien.", "Tienes el superpoder de ver más allá del enojo y descubrir lo que la gente realmente necesita.", "Tu empatía es la llave que abre los corazones más cerrados. ¡No la dejes de usar!", "Para ti, conectar con las personas siempre será más valioso que ganar una discusión.", "Tu diálogo es el puente que hoy transformó la distancia en un camino compartido.", "Cuando escuchas con atención, le estás dando el mejor regalo posible a quien te habla.", "Tus palabras de respeto tienen la fuerza para desarmar cualquier tormenta.", "Hoy elegiste hablar con calma y respeto; gracias por no levantar muros.", "Tu escucha asertiva demuestra que sabes hacer espacio para entender a los demás.", "Cuando cambias los impulsos por argumentos, logras que tu mensaje llegue al corazón.", "Demostraste que sabes cuándo sentarte, callar y simplemente escuchar de verdad.", "Expresaste lo que sentías sin lastimar a nadie. ¡Ese es tu gran superpoder!", "No buscaste tener la razón, buscaste construir una solución. ¡Excelente trabajo!", "Nos demostraste que tienes la habilidad perfecta para resolver problemas en equipo.", "Tu mente se enfocó en resolver, no en pelear. Así es como se gana de verdad.", "Lograste que ambas partes ganaran y se sintieran escuchadas. ¡Eso es éxito real!", "Al resolver este problema, nos hiciste a todos más fuertes y más unidos.", "Tu voluntad de dialogar es lo que siempre te guiará hacia una salida positiva.", "Hoy cediste un poco, pero ganaste una armonía tremenda para el futuro.", "La paz que mostraste en el juego no vino de afuera; empezó con tu propia calma.", "Con cada conflicto que resolviste hoy, sumaste un nuevo aprendizaje para tu vida.", "Tu grandeza se nota cuando respondes con total calma en medio del caos.", "Tu amabilidad es un idioma tan fuerte que todos a tu alrededor lo pueden sentir.", "No pudiste controlar el problema que cayó, pero decidiste perfectamente cómo responder.", "Tu energía positiva tiene el poder real de transformar cualquier ambiente en el que estés.", "Mantuviste la calma en la tormenta, y eso demuestra tu gran inteligencia emocional.", "¡Muchas gracias por usar tu tiempo hoy para traer un poco más de armonía al mundo!"];
+        const WORDS = ["Empatía", "Escucha Asertiva", "Respeto", "Acuerdo", "Comprensión"];
+        const NAMES = ["ENOJO", "DISCUSIÓN", "FRUSTRACIÓN", "MALENTENDIDO", "INTOLERANCIA", "INTERRUPCIÓN", "DEFENSIVA", "INDIFERENCIA", "PREJUICIO", "ORGULLO", "RIVALIDAD", "RUMOR"];
+        const COLS = ["#C8553D", "#D9893B", "#B8704F", "#8C8A4E", "#C2674F", "#6B7A80", "#A9644B", "#9A9A8E", "#7E6B58", "#B5483A", "#CE7A45", "#8A7F5C"];
+        const HEART = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-7-4.6-9.3-9A5.3 5.3 0 0 1 12 6.5 5.3 5.3 0 0 1 21.3 12C19 16.4 12 21 12 21z"/></svg>';
+        let player_name = "", G = null, GOAL = 550, lastScore = 0;
+        const PLY = '<svg class="pl" viewBox="0 0 62 62"><path class="fl" d="M26 49h10l-5 13z" fill="#D9893B"/><path d="M12 52l10-9M50 52l-10-9" stroke="#D9893B" stroke-width="4" stroke-linecap="round"/><path d="M31 2c6 8 8 18 8 30l11 13v6l-13-4h-12l-13 4v-6l11-13c0-12 2-22 8-30z" fill="#2F7F73"/><path d="M31 2c-6 8-8 18-8 30h16c0-12-2-22-8-30z" fill="#fff" opacity=".2"/><circle cx="31" cy="24" r="5" fill="#F3EFE6" stroke="#2B3A3F" stroke-width="2"/></svg>';
+
+        function show(id) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('on')); $(id).classList.add('on') }
+        $('name').addEventListener('input', e => { $('go').disabled = !e.target.value.trim() });
+        $('name').addEventListener('keydown', e => { if (e.key === 'Enter' && !$('go').disabled) $('go').click() });
+        $('go').onclick = () => { player_name = $('name').value.trim(); $('intro-t').textContent = "¡Hola, " + player_name + "! Mateo y Valeria tienen un fuerte desacuerdo y no logran entenderse. Sus tensiones y malentendidos están flotando en el aire. ¡Necesitamos tu ayuda para transformar esa energía antes de que el conflicto crezca!"; show('s-intro') };
+        $('next1').onclick = () => show('s-tut');
+        $('play-btn').onclick = start;
+        $('again').onclick = start;
+        $('see').onclick = () => {
+            const ok = lastScore >= GOAL, f = ok ? 'alegre.jpg' : 'triste.jpg', img = $('res-img'), ph = $('res-ph');
+            const pr = new Image(); pr.onload = () => { img.src = f; img.style.display = 'block'; ph.style.display = 'none' }; pr.onerror = () => { img.style.display = 'none'; ph.style.display = 'flex'; ph.textContent = 'Aquí va la imagen ' + f }; pr.src = f;
+            $('res-t').textContent = ok ? "¡Lo lograron! Mateo y Valeria resolvieron su conflicto gracias a ti, " + player_name + "." : "Mateo y Valeria todavía no logran resolver su conflicto.";
+            $('res-d').textContent = ok ? "Alcanzaste " + lastScore + " puntos. Transformaste suficientes tensiones para que ellos pudieran entenderse." : "Alcanzaste " + lastScore + " puntos. Les faltaron " + (GOAL - lastScore) + " puntos de comprensión para entenderse. ¡Inténtalo de nuevo, " + player_name + "!";
+            show('s-res')
+        };
+        $('back').onclick = () => show('s-end');
+        { const p = new Image(); p.onload = () => { $('robot-img').src = 'robot.png'; $('robot-img').style.display = 'block'; $('robot-ph').style.display = 'none' }; p.src = 'robot.png' }
+
+        const SPR = c => `<svg class="sp" viewBox="0 0 80 90" style="--c:${c}"><path class="body" d="M40 4C20 4 6 20 6 40c0 22 20 38 34 38s34-16 34-38C74 20 60 4 40 4z"/><path class="body" d="M35 77l5 10 5-10z"/><ellipse cx="26" cy="24" rx="9" ry="5" fill="#fff" opacity=".3" transform="rotate(-30 26 24)"/><g class="sad" stroke="#2B3A3F" stroke-width="3.5" stroke-linecap="round" fill="none"><path d="M21 32l16 7M59 32l-16 7"/><path d="M31 58q9-7 18 0"/></g><g class="happy" stroke="#2B3A3F" stroke-width="3.5" stroke-linecap="round" fill="none"><path d="M23 38q6-6 12 0M45 38q6-6 12 0"/><path d="M29 52q11 12 22 0"/></g><circle cx="30" cy="44" r="3.5" fill="#2B3A3F" class="sad"/><circle cx="50" cy="44" r="3.5" fill="#2B3A3F" class="sad"/><circle class="shield" cx="40" cy="41" r="38"/></svg>`;
+        const PLY_OLD = '<svg class="pl" viewBox="0 0 62 62"><circle cx="31" cy="20" r="11" fill="#F2C9A0"/><path d="M19 18c0-9 6-12 12-12s12 3 12 12c-4-4-8-5-12-5s-8 1-12 5z" fill="#2B3A3F"/><path d="M9 60c1-14 9-22 22-22s21 8 22 22z" fill="#2F7F73"/><path d="M16 44l-6-10M46 44l6-10" stroke="#2F7F73" stroke-width="6" stroke-linecap="round"/><circle cx="26" cy="21" r="1.6" fill="#2B3A3F"/><circle cx="36" cy="21" r="1.6" fill="#2B3A3F"/><path d="M26 26q5 4 10 0" stroke="#2B3A3F" fill="none" stroke-width="1.6" stroke-linecap="round"/></svg>';
+
+        function start() {
+            show('play');
+            const f = $('field'); f.querySelectorAll('.ent').forEach(e => e.remove());
+            const W = f.clientWidth, H = f.clientHeight;
+            G = { W, H, k: H / 640, sm: 1, t: 60, score: 0, lives: 2, imm: 0, cd: 0, sp: 0, list: [], shots: [], last: -1, x: W / 2, keys: {}, over: false, ts: performance.now() };
+            const pe = document.createElement('div'); pe.className = 'ent'; pe.innerHTML = PLY; f.appendChild(pe); G.pe = pe;
+            $('lives').innerHTML = HEART + HEART;
+            $('sc').textContent = 0; $('clock').classList.remove('hurry');
+            requestAnimationFrame(loop);
+        }
+        function mk(type, x, y, extra) {
+            const s = type === 9 ? 104 : 72;
+            const el = document.createElement('div'); el.className = 'ent cf' + (type === 6 ? ' sh' : '');
+            el.style.width = s + 'px'; el.innerHTML = SPR(COLS[type]) + '<span class="lb">' + NAMES[type] + '</span>';
+            $('field').appendChild(el);
+            const c = Object.assign({ type, x, y, x0: x, y0: y, s, el, svg: el.firstChild, age: 0, hp: type === 6 ? 2 : 1, rot: 0, ok: false, gone: false, op: 1, dir: Math.random() < .5 ? -1 : 1 }, extra || {});
+            G.list.push(c); return c;
+        }
+        function spawn(i) {
+            const { W, H } = G; let t; do { t = Math.floor(Math.random() * 12) } while (t === G.last); G.last = t;
+            const m = t === 9 ? 64 : 46, x = m + Math.random() * (W - 2 * m);
+            if (t === 10) { const xx = 90 + Math.random() * (W - 180); const a = mk(10, xx - 40, -40), b = mk(10, xx + 40, -40); a.pair = b; b.pair = a; a.lk = b.lk = document.createElement('div'); a.lk.className = 'ent link'; $('field').appendChild(a.lk); return }
+            if (t === 5) { mk(5, x, H * .4, { pop: 0 }); return }
+            const r = Math.random(), side = (t === 5 || t === 10) ? 0 : (r < .3 ? -1 : r < .6 ? 1 : 0);
+            const props = { ly: H * (.2 + Math.random() * .15), noLoop: [5, 9, 10].includes(t) || Math.random() < .25 };
+            if (side) { props.in = 1; props.sd = side; props.tx = Math.max(m, Math.min(W - m, x)); mk(t, side < 0 ? -50 : W + 50, 30 + Math.random() * H * .2, props) }
+            else mk(t, x, -50 - (i || 0) * 70, props);
+        }
+        function burst(x, y, bad) {
+            const f = $('field');
+            for (let i = 0; i < 9; i++) {
+                const p = document.createElement('div'); p.className = 'pt' + (bad ? ' bad' : ''); const a = i / 9 * 6.28, d = 30 + Math.random() * 30;
+                p.style.left = x + 'px'; p.style.top = y + 'px'; p.style.setProperty('--dx', Math.cos(a) * d + 'px'); p.style.setProperty('--dy', Math.sin(a) * d + 'px'); f.appendChild(p); setTimeout(() => p.remove(), 620)
+            }
+        }
+        function fire() {
+            if (!G || G.over || G.cd > 0) return; G.cd = .2;
+            const el = document.createElement('div'); el.className = 'shot'; el.textContent = WORDS[Math.random() * WORDS.length | 0];
+            $('field').appendChild(el); G.shots.push({ x: G.x, y: G.H - 95, el });
+            const mz = document.createElement('div'); mz.className = 'mz'; mz.style.left = G.x + 'px'; mz.style.top = (G.H - 88) + 'px'; $('field').appendChild(mz); setTimeout(() => mz.remove(), 160);
+        }
+        function tri(v) { return 2 / Math.PI * Math.asin(Math.sin(v)) }
+        function rebase(c) { c.x0 = c.x; if (c.type === 1) c.x0 = c.x - Math.sin(c.age * 2.2) * 45; if (c.type === 11) c.x0 = c.x - tri(c.age * 5) * 55 }
+        function penal(x) { if (G.score <= 0) return; G.score = Math.max(0, G.score - 5); $('sc').textContent = G.score; const f = document.createElement('div'); f.className = 'fx'; f.textContent = '-5'; f.style.left = Math.max(10, Math.min(G.W - 30, x)) + 'px'; f.style.top = (G.H - 60) + 'px'; $('field').appendChild(f); setTimeout(() => f.remove(), 800) }
+        function upd(c, dt) {
+            const { W, H, k } = G; c.age += dt;
+            if (c.healed) { c.y -= 90 * dt; c.op = Math.max(0, c.op - dt * .6); return }
+            if (c.gone) { c.op -= dt * 3; return }
+            if (c.in) { c.y += 40 * k * dt; c.x -= c.sd * 230 * k * dt; if ((c.sd < 0 && c.x >= c.tx) || (c.sd > 0 && c.x <= c.tx)) { c.x = c.tx; c.in = 0; rebase(c) } return }
+            if (!c.noLoop && !c.lpDone && c.lp == null && c.y > c.ly) { c.lp = 0; c.ax = c.x; c.ay = c.y; c.ldir = c.x < W / 2 ? 1 : -1 }
+            if (c.lp != null && !c.lpDone) { c.lp += dt * 5.2; if (c.lp >= 6.283) { c.lpDone = 1; c.x = c.ax; c.y = c.ay; rebase(c) } else { const R = 44; c.x = Math.max(c.s / 2, Math.min(W - c.s / 2, c.ax + c.ldir * R * Math.sin(c.lp))); c.y = c.ay + R - R * Math.cos(c.lp); return } }
+            switch (c.type) {
+                case 0: c.y += 110 * k * dt; break;
+                case 1: c.y += 100 * k * dt; c.x = c.x0 + Math.sin(c.age * 2.2) * 45; break;
+                case 2: if (!c.p && c.y > H * .45) c.p = .55; if (c.p > 0) { c.p -= dt } else c.y += 60 * k * dt; if (c.p <= 0 && c.p !== undefined) c.p = -1; break;
+                case 3: c.y += 85 * k * dt; c.rot += 70 * dt; break;
+                case 4: c.y += 140 * k * dt; if (!c.sw && c.y > H * .3) { c.sw = 1; c.tx = c.x < W / 2 ? c.x + W * .3 : c.x - W * .3 } if (c.sw) c.x += (c.tx - c.x) * Math.min(1, dt * 5); break;
+                case 5: c.pop = Math.min(1, (c.pop || 0) + dt * 4); c.y += 110 * k * dt; break;
+                case 6: c.y += 75 * k * dt; break;
+                case 7: c.y += 55 * k * dt; c.x += 22 * k * c.dir * dt; break;
+                case 8: c.y += (c.age < .35 ? 270 : c.age < .95 ? 0 : 100) * k * dt; break;
+                case 9: c.y += 45 * k * dt; break;
+                case 10: c.y += 90 * k * dt; if (c.pair && c.y > H * .4 && !c.sp) { c.sp = 1; c.vx = (c.x < c.pair.x ? -1 : 1) * 70 * k; if (c.lk) { c.lk.remove(); c.pair.lk = null; c.lk = null } } if (c.vx) c.x += c.vx * dt; break;
+                case 11: c.y += 130 * k * dt; c.x = c.x0 + tri(c.age * 5) * 55; break;
+            }
+            c.x = Math.max(c.s / 2, Math.min(W - c.s / 2, c.x));
+            if (c.y > H - 20) { c.gone = true; c.miss = 1 }
+        }
+        function hurt() {
+            if (G.imm > 0) return;
+            G.lives--; G.imm = 1;
+            const hs = $('lives').children; for (let i = 0; i < hs.length; i++)hs[i].classList.toggle('lost', i >= G.lives);
+            const fl = $('flash'); fl.classList.add('on'); requestAnimationFrame(() => requestAnimationFrame(() => fl.classList.remove('on')));
+            G.pe.firstChild.classList.add('inm');
+            if (G.lives <= 0) finish(false);
+        }
+        function finish(timeout) {
+            if (G.over) return; G.over = true;
+            setTimeout(() => {
+                $('end-t').textContent = timeout ? "¡Buen trabajo, " + player_name + "! El tiempo terminó y lograste traer mucha armonía a la situación." : "¡Buen intento, " + player_name + "! El conflicto fue fuerte, pero aprendiste valiosas lecciones en el camino.";
+                $('score-big').textContent = G.score; lastScore = G.score;
+                $('quote').textContent = PHRASES[Math.random() * PHRASES.length | 0];
+                show('s-end');
+            }, timeout ? 150 : 600);
+        }
+        function loop(now) {
+            if (G.over) return;
+            const dt = Math.min(.05, (now - G.ts) / 1000); G.ts = now;
+            const { W, H, k } = G;
+            G.t -= dt; if (G.t <= 0) { G.t = 0; finish(true) }
+            const m = Math.floor(G.t / 60), s = Math.ceil(G.t % 60); const ss = s === 60 ? 0 : s, mm = s === 60 ? m + 1 : m;
+            $('tm').textContent = mm + ':' + String(ss).padStart(2, '0');
+            $('barf').style.width = (G.t / 60 * 100) + '%';
+            $('clock').classList.toggle('hurry', G.t < 15);
+            if (G.t < 15) $('clock').style.animationDuration = (.2 + G.t / 40) + 's';
+            // input
+            const sp = 340 * k * 1.2; if (G.keys.ArrowLeft) G.x -= sp * dt; if (G.keys.ArrowRight) G.x += sp * dt;
+            G.x = Math.max(32, Math.min(W - 32, G.x));
+            G.sm = G.t < 30 ? 2 + (30 - G.t) / 30 * .7 : 1.25; G.cd -= dt; if (G.keys.ArrowLeft || G.keys.ArrowRight) G.mv = now; if (G.cd <= 0 && now - (G.mv || -1e9) < 150) fire(); if (G.imm > 0) { G.imm -= dt; if (G.imm <= 0) G.pe.firstChild.classList.remove('inm') }
+            // spawn
+            G.sp -= dt; if (G.sp <= 0) { G.sp = G.t < 30 ? .95 - (30 - G.t) / 30 * .3 : 1.9 - (60 - G.t) / 30 * .3; const n = G.t < 30 ? 4 + (Math.random() < .5 ? 1 : 0) : (Math.random() < .4 ? 3 : 2); if (G.list.length < (G.t < 30 ? 24 : 14)) for (let i = 0; i < n; i++)spawn(i) }
+            // shots
+            for (const b of G.shots) { b.y -= 520 * k * dt; }
+            // conflicts
+            for (const c of G.list) {
+                upd(c, dt * G.sm); if (c.miss) { c.miss = 0; penal(c.x) }
+                if (c.ok || c.gone || c.healed) continue;
+                const r = c.s * .42;
+                for (const b of G.shots) {
+                    if (b.dead) continue;
+                    if (Math.hypot(b.x - c.x, b.y - c.y) < r + 16) {
+                        b.dead = true; c.hp--; burst(b.x, b.y);
+                        if (c.hp === 1 && c.type === 6) c.el.classList.remove('sh');
+                        if (c.hp <= 0) { c.healed = true; c.el.classList.add('healed'); c.svg.style.transform = ''; G.score += 10; $('sc').textContent = G.score; burst(c.x, c.y) }
+                        break;
+                    }
+                }
+                if (!c.healed && G.imm <= 0 && Math.hypot(G.x - c.x, (H - 50) - c.y) < r + 24) { burst(c.x, c.y, true); c.gone = true; c.op = 0; hurt(); }
+            }
+            // render
+            for (const c of G.list) {
+                const pop = c.type === 5 ? c.pop : 1;
+                c.el.style.transform = `translate3d(${c.x - c.s / 2}px,${c.y - c.s / 2}px,0) scale(${.4 + .6 * pop})`;
+                c.el.style.opacity = Math.max(0, c.op) * (c.type === 5 ? pop : 1);
+                if (c.type === 3 || c.type === 1) c.svg.style.transform = c.type === 3 ? `rotate(${c.rot}deg)` : `rotate(${Math.cos(c.age * 2.2) * 10}deg)`;
+                if (c.lk && c.pair) { const mx = (c.x + c.pair.x) / 2, my = (c.y + c.pair.y) / 2; c.lk.style.width = Math.abs(c.x - c.pair.x) + 'px'; c.lk.style.transform = `translate3d(${mx - Math.abs(c.x - c.pair.x) / 2}px,${my}px,0)` }
+            }
+            for (const b of G.shots) b.el.style.transform = `translate3d(${b.x - b.el.offsetWidth / 2}px,${b.y}px,0)`;
+            G.pe.style.transform = `translate3d(${G.x - 31}px,${H - 81}px,0)`;
+            // cleanup
+            G.list = G.list.filter(c => { const dead = c.op <= 0 || c.y < -120; if (dead) { c.el.remove(); if (c.lk) c.lk.remove() } return !dead });
+            G.shots = G.shots.filter(b => { const dead = b.dead || b.y < -30; if (dead) b.el.remove(); return !dead });
+            requestAnimationFrame(loop);
+        }
+        // controls: deslizar para mover, tocar para lanzar
+        (() => {
+            const f = $('field'); let d = null;
+            f.addEventListener('pointerdown', e => { if (!G || G.over) return; d = { x: e.clientX, px: G.x, t: performance.now(), m: 0 }; try { f.setPointerCapture(e.pointerId) } catch (_) { } });
+            f.addEventListener('pointermove', e => { if (!d || !G) return; const dx = e.clientX - d.x; d.m = Math.max(d.m, Math.abs(dx)); if (d.m > 10) { const nx = Math.max(32, Math.min(G.W - 32, d.px + dx)); if (Math.abs(nx - G.x) > .5) G.mv = performance.now(); G.x = nx } });
+            const up = () => { d = null };
+            f.addEventListener('pointerup', up); f.addEventListener('pointercancel', () => { d = null });
+            addEventListener('keydown', e => { if (!G) return; if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { G.keys[e.key] = 1; e.preventDefault() } });
+            addEventListener('keyup', e => { if (G) G.keys[e.key] = 0 });
+        })();
+    </script>
+</body>
+
+</html>
